@@ -10,11 +10,12 @@ createTableOfDate:{[date;amount]
 createTableOfDateEven:{[date;amount]
  createTable[amount;amount#(date + 12:00:00.000)] };
 // No data in 29
-{ dateMap[x]:createTableOfDate[x;10000] } each days[til 28];
+{ dateMap[x]:createTableOfDate[x;10000 + rand 1000] } each days[til 28];
 // Exotic on 2014.7.31
 dateMap[2014.07.31]:createTableOfDate[2014.07.31;15000];
 // Even on 2014.7.30
 dateMap[2014.07.30]:createTableOfDateEven[2014.07.30;10000];
+show "GenerationComplete";
 
 // Problem resolution.
 timeCount:{[grand]
@@ -23,13 +24,15 @@ times:{[grand]
  00:00 + grand * til timeCount grand };
 emptySub:{[grand]
  flip (`minute;`val)!(times[grand];(timeCount grand)#0) };
-getSubCount:{[t;grand]
- emptySub[grand] lj select val:count 1 by grand xbar time.minute from t };
+getSubCount:{[table;grand]
+ emptySub[grand] lj select val:count 1 by grand xbar time.minute from table };
 
 gradu:1
 toMMDD:{[date]
  time:string date; `$(time[5 + til 2], time[8 + til 2]) };
-monthSub:{x,'y} over { (`minute;toMMDD[x]) xcol getSubCount[dateMap[x];gradu] } each days;
+getSubCountOfDay:{[grand;day] (`minute;toMMDD[day]) xcol getSubCount[dateMap[day];grand] }
+getMonthSub:{[grand] {x,'y} over getSubCountOfDay[grand] each days };
+monthSub:getMonthSub[gradu];
 monthAggValue:{[f;days;time]
  f monthSub[time;days] };
 monthAggOfDays:{[f;days]
@@ -37,11 +40,11 @@ monthAggOfDays:{[f;days]
 
 monthAvg:monthAggOfDays[avg;toMMDD each days];
 diffWeight:(til timeCount[gradu]) % (sum til timeCount[gradu]);
-getSubmissionDiff:{[date;grand]
+getSubmissionDiff:{[date]
  (sums monthAvg[`avg]) - (sums monthSub[toMMDD[date]]) };
-daysDev: days ! { sum diffWeight * {x * x} getSubmissionDiff[x;gradu] } each days;
+daysDev: days ! { sum diffWeight * {x * x} getSubmissionDiff[x] } each days;
 selectiveDays: where daysDev < 80 * (med daysDev);
 monthSelectiveAvg:monthAggOfDays[avg;toMMDD each selectiveDays];
 
-monthCur:sums monthSub;
-monthAvgCur:sums monthAvg;
+monthCur:{[g] sums getMonthSub[g]};
+monthAvgCur:sums monthSelectiveAvg;
